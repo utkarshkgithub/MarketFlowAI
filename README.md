@@ -29,4 +29,3 @@ Scenario 1: Single US Stock (ticker) Event-Driven Deep Research.
 ## Rules
 
 See `docs/crewai_market_research_global_rules.md` for the project constitution.
-# AgenticInvest
