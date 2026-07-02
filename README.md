@@ -9,12 +9,15 @@ Scenario 1: Single US Stock (ticker) Event-Driven Deep Research.
 ## Usage
 
 1. Install dependencies:
+
    ```bash
    pip install -r requirements.txt
    # or
    pip install .
    ```
+
 2. Run the CLI:
+
    ```bash
    python -m src.cli --ticker TSLA --horizon 1m --risk normal
    ```
