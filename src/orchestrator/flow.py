@@ -71,8 +71,11 @@ class OrchestratorFlow:
         write_json(f"{run_dir}/evidence.json", [e.model_dump() for e in evidences])
         
         # 4. Verdict
-        verdict_label, rationale, confidence = self.verdict_engine.compute_verdict(signals, evidences)
-        
+        verdict_label, _keyword_rationale, confidence = self.verdict_engine.compute_verdict(signals, evidences)
+
+        # Use AI to write the final professional Bull/Bear rationale
+        rationale = self.synthesizer.generate_rationale(evidences, ticker)
+
         report = VerdictReport(
             request=request,
             signals=signals,

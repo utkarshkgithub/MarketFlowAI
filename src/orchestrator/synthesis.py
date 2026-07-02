@@ -1,6 +1,22 @@
+import json
+import logging
 from typing import List
+
 from src.schemas.evidence import Evidence
 from src.schemas.report import Signals
+from src.crews.llm_client import chat
+
+logger = logging.getLogger(__name__)
+
+_RATIONALE_SYSTEM_PROMPT = """You are a senior equity research writer.
+You will be given a list of evidence claims about a stock (both bullish and bearish).
+Write a concise, professional investment rationale split into exactly two parts:
+1. BULL CASE: 2-3 sentences summarizing the strongest bullish arguments.
+2. BEAR CASE: 2-3 sentences summarizing the strongest bearish arguments.
+
+Return ONLY valid JSON with exactly two keys: "bull_case" and "bear_case".
+Each value must be a plain string (no markdown, no bullet points inside). No extra keys."""
+
 
 class Synthesizer:
     def build_signals(self, evidences: List[Evidence]) -> Signals:
@@ -44,7 +60,7 @@ class Synthesizer:
             
             # 3. Sentiment Extraction
             if "sentiment" in ev.tags or "news" in ev.source_type:
-                # Mock logic: look for keywords in claim
+                # Look for keywords in claim
                 if "record breaking" in ev.claim or "positive" in ev.claim or "Buy" in ev.claim:
                     sentiment_sum += 0.8
                     sentiment_count += 1
@@ -90,3 +106,37 @@ class Synthesizer:
             uncertainty=avg_uncertainty,
             conflict_score=0.1 
         )
+
+    def generate_rationale(self, evidences: List[Evidence], ticker: str) -> dict:
+        """
+        Uses OpenAI to write a professional Bull/Bear narrative
+        from the full list of collected Evidence objects.
+        Falls back to a simple text summary if the LLM call fails.
+        """
+        claims_text = "\n".join(
+            f"- [{ev.source_type}] {ev.claim} (confidence: {ev.confidence:.0%})"
+            for ev in evidences
+        )
+
+        user_prompt = (
+            f"Here are all the evidence claims gathered for the stock {ticker}:\n\n"
+            f"{claims_text}\n\n"
+            f"Write the BULL CASE and BEAR CASE rationale as instructed."
+        )
+
+        try:
+            raw = chat(_RATIONALE_SYSTEM_PROMPT, user_prompt)
+            parsed = json.loads(raw)
+            return {
+                "bull_case": parsed.get("bull_case", "No bull case generated."),
+                "bear_case": parsed.get("bear_case", "No bear case generated."),
+            }
+        except Exception as e:
+            logger.error("Synthesizer.generate_rationale LLM call failed: %s", e)
+            # Fallback: simple split of evidence into positive/negative
+            bull = [ev.claim for ev in evidences if ev.confidence >= 0.8]
+            bear = [ev.claim for ev in evidences if ev.confidence < 0.8]
+            return {
+                "bull_case": " ".join(bull) if bull else "No strong bull signals found.",
+                "bear_case": " ".join(bear) if bear else "No strong bear signals found.",
+            }
