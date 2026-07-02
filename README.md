@@ -1,4 +1,4 @@
-# CrewAI Dynamic Market Research Orchestrator
+# MarketFlow CrewAI Dynamic Market Research Orchestrator
 
 A production-grade skeleton for an event-driven deep research pipeline using CrewAI, Flow-based orchestration, and structured evidence gathering.
 
